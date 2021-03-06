@@ -4,6 +4,27 @@ Tmux capture content produced by command of zsh.
 
 [![asciicast](https://asciinema.org/a/360605.svg)](https://asciinema.org/a/360605)
 
+## Table of contents
+
+* [Table of contents](#table-of-contents)
+* [Requirements](#requirements)
+* [Features](#features)
+* [Installation](#installation)
+  * [Manual](#manual)
+  * [Zgen](#zgen)
+  * [Zinit](#zinit)
+* [Usage](#usage)
+  * [Inspect last scrolled command](#inspect-last-scrolled-command)
+  * [Insert content to ZLE](#insert-content-to-zle)
+  * [Suggestion](#suggestion)
+* [Custom](#custom)
+  * [Zsh variables](#zsh-variables)
+  * [Zsh hooks](#zsh-hooks)
+  * [Simple custom example](#simple-custom-example)
+  * [Advanced custom example](#advanced-custom-example)
+* [FAQ](#faq)
+* [License](#license)
+
 ## Requirements
 
 1. zsh
@@ -31,6 +52,10 @@ Look at the version of tmux, **3.2**, **3.2**, **3.2**!!! Repeat important thing
 ### Zgen
 
 `zgen load 'kevinhwang91/zsh-tmux-capture'`
+
+### Zinit
+
+`zinit light kevinhwang91/zsh-tmux-capture`
 
 ## Usage
 
@@ -69,7 +94,9 @@ Feel free to assign the below variables to the values what you want:
 ReadOnly variable:
 
 - TMUX_CP_RET: return code of the lastest captured command, only be used inside
-  `tmux-capture-notify`
+  `tmux-capture-notify`. Check out [Advanced custom example](#advanced-custom-example) for detail.
+- TMUX_CP_PROMPT: return 1 if captured content for lastest command, otherwise unset this variable,
+  only be used for `PROMPT`. Check out [Advanced custom example](#advanced-custom-example) for detail.
 
 ### Zsh hooks
 
@@ -125,6 +152,23 @@ add-zsh-hook preexec _tmux_capture_export_cmd
 # Add grep and ps to whitelist
 TMUX_CP_WHITE_PATTERN='(grep|^ps)'
 
+# Customize prompt and add underline for path when captured content
+_prompt() {
+    if (( TMUX_CP_PROMPT)); then
+        print -n %U
+    fi
+
+    print -n %d
+
+    if (( TMUX_CP_PROMPT)); then
+        print -n %u
+    fi
+    print -n ' '
+}
+
+setopt prompt_subst
+PROMPT='$(_prompt)'
+
 source your_path/zsh-tmux-capture/tmux-capture.plugin.zsh
 ```
 
@@ -138,11 +182,8 @@ Compatibility with older versions is not the goal of this plugin.
 
 Q: Why don't you use `LBUFFER+=$(eval $history[$(( HISTCMD-1 ))])` to insert the output of the last command?
 
-A: There're two mainly reasons:
-
-1. It only gets last history command and then get `stdout` by executing command again, which can't
-   capture stdout of interactive command like `fzf`.
-2. `insert-last-cmd-out` doesn't only capture `stdout`, but also capture `stderr`.
+A: It only gets last history command and then get `stdout` by executing command again, which can't
+capture stdout of interactive command like `fzf`.
 
 ## License
 
