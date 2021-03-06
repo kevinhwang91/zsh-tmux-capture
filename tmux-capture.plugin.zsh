@@ -16,6 +16,7 @@ _tmux_capture_preexec() {
 _tmux_capture_precmd() {
     local ret=$?
 
+    unset TMUX_CP_PROMPT
     if [[ -z $_tmux_cp_last_range ]]; then
         return
     fi
@@ -55,6 +56,7 @@ _tmux_capture_precmd() {
         typeset -g _tmux_cp_offset=$offset
         typeset -g _tmux_cp_range=$cur_range
         TMUX_CP_RET=$ret
+        TMUX_CP_PROMPT=1
         if (( $+functions[tmux-capture-notify] )); then
             tmux-capture-notify
         fi
@@ -81,6 +83,10 @@ tmux-capture-last-scrolled() {
     if [[ -z $TMUX_CP_RET ]]; then
         tmux display 'never captured scrolled message in #{pane_tty}' &|
         return
+    fi
+    if (( TMUX_CP_PROMPT )); then
+        unset TMUX_CP_PROMPT
+        zle && zle reset-prompt
     fi
 
     local hist_size=$(tmux display -t $TMUX_PANE -p -F '#{history_size}')
