@@ -5,7 +5,7 @@ if (( ! $+commands[tmux] )) || [[ -z $TMUX_PANE ]] || [[ ! $- =~ i ]]; then
 fi
 
 _tmux_capture_preexec() {
-    local info=(${(z)$(tmux display -t $TMUX_PANE -p -F '#{history_size} #{cursor_y}')})
+    local info=(${(z)$(tmux display -t $TMUX_PANE -p '#{history_size} #{cursor_y}')})
     local hist_size=$info[1]
     local cursor_y=$info[2]
     typeset -g _tmux_cp_last_range=$(( hist_size + cursor_y ))
@@ -13,17 +13,17 @@ _tmux_capture_preexec() {
         -S $(( cursor_y - 8 )) -E $(( cursor_y - 4 )))
 }
 
-_tmux_capture_precmd() {
-    local ret=$?
+_tmux_capture_defer_handler() {
+    trap '_tmux_capture_clear_context' EXIT
 
-    unset TMUX_CP_PROMPT
-    if [[ -z $_tmux_cp_last_range ]]; then
+    zle -F $1
+    exec {1}>&-
+
+    if (( ! _tmux_cp_last_range )); then
         return
     fi
 
-    trap '_tmux_capture_clear_context' EXIT
-
-    local info=(${(z)$(tmux display -t $TMUX_PANE -p -F \
+    local info=(${(z)$(tmux display -t $TMUX_PANE -p \
         '#{history_size} #{cursor_y} #{e|/|:#{history_limit},10}')})
     local hist_size=$info[1]
     local cursor_y=$info[2]
@@ -50,32 +50,52 @@ _tmux_capture_precmd() {
         return
     fi
 
-    _tmux_last_output $cursor_y $offset &|
+    _tmux_last_output $cursor_y $offset
 
     if (( offset >= LINES )); then
         typeset -g _tmux_cp_offset=$offset
         typeset -g _tmux_cp_range=$cur_range
-        TMUX_CP_RET=$ret
+        TMUX_CP_RET=$_tmux_cp_last_code
         TMUX_CP_PROMPT=1
         if (( $+functions[tmux-capture-notify] )); then
             tmux-capture-notify
         fi
+        zle reset-prompt
     fi
+}
+
+_tmux_capture_precmd() {
+    typeset -g _tmux_cp_last_code=$?
+
+    unset TMUX_CP_PROMPT
+    if [[ -z $_tmux_cp_last_range ]]; then
+        return
+    fi
+
+    # can't get history_size properly when pane is unzoomed
+    # let's defer 100ms to wait tmux flush history_size :)
+    local fd
+    zmodload zsh/zselect
+    exec {fd}< <(zselect -t 10)
+
+    zle -F $fd _tmux_capture_defer_handler
 }
 
 _tmux_capture_clear_context() {
     unset _tmux_cp_sample
     unset _tmux_cp_last_range
+    unset _tmux_cp_last_code
 }
 
 _tmux_last_output() {
     local cursor_y=$1
     local offset=$2
+    typeset -g _tmux_cp_last_buf
     if (( offset )); then
-        tmux capturep -t $TMUX_PANE -S $(( cursor_y - offset )) -E $(( cursor_y - 1 )) \; \
-            set -p -F -t $TMUX_PANE '@last_cmd_o_buf' '#{buffer_name}'
+        tmux capturep -t $TMUX_PANE -S $(( cursor_y - offset )) -E $(( cursor_y - 1 ))
+        _tmux_cp_last_buf=$(tmux display -t $TMUX_PANE -p '#{buffer_name}')
     else
-        tmux set -up -t $TMUX_PANE '@last_cmd_o_buf'
+        _tmux_cp_last_buf=
     fi
 }
 
@@ -86,10 +106,10 @@ tmux-capture-last-scrolled() {
     fi
     if (( TMUX_CP_PROMPT )); then
         unset TMUX_CP_PROMPT
-        zle && zle reset-prompt
+        zle reset-prompt
     fi
 
-    local hist_size=$(tmux display -t $TMUX_PANE -p -F '#{history_size}')
+    local hist_size=$(tmux display -t $TMUX_PANE -p '#{history_size}')
     local top_line=$(( _tmux_cp_offset + hist_size - _tmux_cp_range ))
     local bottom_line=$(( LINES + hist_size - _tmux_cp_range ))
 
@@ -121,18 +141,15 @@ tmux-capture-last-scrolled() {
 }
 
 insert-last-cmd-out() {
-    local buf_name=$(tmux show -pv -t $TMUX_PANE '@last_cmd_o_buf')
-
-    if [[ -n $buf_name ]]; then
+    if [[ -n $_tmux_cp_last_buf ]]; then
         local last_out
-        last_out=$(tmux show-buffer -b $buf_name 2>/dev/null)
+        last_out=$(tmux show-buffer -b $_tmux_cp_last_buf 2>/dev/null)
         if (( ? )); then
             LBUFFER+=$(eval $history[$(( HISTCMD-1 ))])
         else
             LBUFFER+=$last_out
         fi
     fi
-
 }
 
 autoload -U add-zsh-hook
