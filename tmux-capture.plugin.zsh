@@ -92,7 +92,7 @@ _tmux_last_output() {
     local offset=$2
     typeset -g _tmux_cp_last_buf
     if (( offset )); then
-        tmux capturep -t $TMUX_PANE -S $(( cursor_y - offset )) -E $(( cursor_y - 1 ))
+        tmux capturep -t $TMUX_PANE -J -S $(( cursor_y - offset )) -E $(( cursor_y - 1 ))
         _tmux_cp_last_buf=$(tmux display -t $TMUX_PANE -p '#{buffer_name}')
     else
         _tmux_cp_last_buf=
@@ -147,7 +147,12 @@ insert-last-cmd-out() {
         if (( ? )); then
             LBUFFER+=$(eval $history[$(( HISTCMD-1 ))])
         else
-            LBUFFER+=$last_out
+            setopt localoptions extendedglob
+            local lines=()
+            for line in "${(@f)last_out}"; do
+                lines+=${line%% #}
+            done
+            LBUFFER+=${(F)lines}
         fi
     fi
 }
