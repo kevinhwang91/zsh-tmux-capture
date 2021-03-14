@@ -24,26 +24,29 @@ _tmux_capture_defer_handler() {
     fi
 
     local info=(${(z)$(tmux display -t $TMUX_PANE -p \
-        '#{history_size} #{cursor_y} #{e|/|:#{history_limit},10}')})
+        '#{history_size} #{cursor_y} #{history_limit}')})
     local hist_size=$info[1]
     local cursor_y=$info[2]
-    local hist_inc=$info[3]
+    local hist_limit=$info[3]
+    local hist_inc=$(( hist_limit / 10 ))
     local cur_range=$(( hist_size + cursor_y ))
     local offset=$(( cur_range - _tmux_cp_last_range ))
 
-    local sample
-    while (( _tmux_cp_last_range >= 0 )); do
-        sample=$(tmux capturep -p -t $TMUX_PANE \
-            -S $(( cursor_y - 8 - offset )) -E $(( cursor_y - 4 - offset )))
+    local cp_start=$(( cursor_y - 8 - offset ))
+    local cp_end=$(( cursor_y - 4 - offset ))
+    while (( -cp_start < hist_limit )); do
+        local sample=$(tmux capturep -p -t $TMUX_PANE -S $cp_start -E $cp_end)
 
         if [[ $sample == $_tmux_cp_sample ]]; then
             break
         fi
         offset=$(( cur_range - _tmux_cp_last_range ))
         _tmux_cp_last_range=$(( _tmux_cp_last_range - hist_inc ))
+        cp_start=$(( cursor_y - 8 - offset ))
+        cp_end=$(( cursor_y - 4 - offset ))
     done
 
-    if (( _tmux_cp_last_range < 0 )); then
+    if (( -cp_start > hist_limit )); then
         unset _tmux_cp_offset
         unset _tmux_cp_range
         unset TMUX_CP_RET
