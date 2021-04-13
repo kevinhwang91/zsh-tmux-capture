@@ -28,13 +28,7 @@ Tmux capture content produced by command of zsh.
 ## Requirements
 
 1. zsh
-2. [tmux](https://github.com/tmux/tmux) (**at least 3.2 version**)
-
-Look at the version of tmux, **3.2**, **3.2**, **3.2**!!! Repeat important things three times!!!
-
-> Get source code through `git clone --depth 1 --branch 3.2-rc https://github.com/tmux/tmux.git` or
-> download [tmux-3.2-rc2](https://github.com/tmux/tmux/releases/download/3.2-rc/tmux-3.2-rc2.tar.gz),
-> and then build it by yourself.
+2. [tmux](https://github.com/tmux/tmux) (**3.2 or later**)
 
 ## Features
 
