@@ -124,17 +124,17 @@ tmux-capture-last-scrolled() {
 
     tmux set -w -t $TMUX_PANE mode-style $mode_style \; \
         copy-mode -t $TMUX_PANE \; \
-        bind -T copy-mode-vi ${TMUX_CP_BK_TOP_L:-C-o} "
+        bind -T copy-mode-vi ${TMUX_CP_BK_TOP_L:-'C-o'} "
             send -t $TMUX_PANE -X goto-line $top_line;
             send -t $TMUX_PANE -X top-line" \; \
-        bind -T copy-mode-vi ${TMUX_CP_BK_BOT_L:-C-g} "
+        bind -T copy-mode-vi ${TMUX_CP_BK_BOT_L:-'C-g'} "
             send -t $TMUX_PANE -X goto-line $bottom_line;
             send -t $TMUX_PANE -X bottom-line" \; \
         send -t $TMUX_PANE -X goto-line $top_line \; \
         send -t $TMUX_PANE -X top-line
     tmux set-hook -p -t $TMUX_PANE 'pane-mode-changed[20]' "
-        unbind -T copy-mode-vi ${TMUX_CP_BK_TOP_L:-C-o};
-        unbind -T copy-mode-vi ${TMUX_CP_BK_BOT_L:-C-g};
+        unbind -T copy-mode-vi ${TMUX_CP_BK_TOP_L:-'C-o'};
+        unbind -T copy-mode-vi ${TMUX_CP_BK_BOT_L:-'C-g'};
         set -t $TMUX_PANE -uw mode-style;
         set-hook -up -t $TMUX_PANE pane-mode-changed[20]"
 
